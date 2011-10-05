@@ -46,10 +46,8 @@
         location="rpw-2.wsdl">
     </wsdl:import>
 
-	<wsdl:binding name="NotificationConsumerJBI"
-		type="wsn-bw:NotificationConsumer">
-		<soap:binding transport="http://schemas.xmlsoap.org/soap/http"
-			style="document" />
+	<wsdl:binding name="NotificationConsumerSoap" type="wsn-bw:NotificationConsumer">
+		<soap:binding transport="http://schemas.xmlsoap.org/soap/http" style="document" />
 		<wsdl:operation name="Notify">
 			<wsdl:input>
 				<soap:body use="literal" />
@@ -57,16 +55,13 @@
 		</wsdl:operation>
 	</wsdl:binding>
 	<wsdl:service name="NotificationConsumerService">
-		<wsdl:port name="JBI" binding="tns:NotificationConsumerJBI">
-			<soap:address
-				location="http://servicemix.org/wsnotification" />
+		<wsdl:port name="Soap" binding="tns:NotificationConsumerSoap">
+			<soap:address location="http://servicemix.org/wsnotification" />
 		</wsdl:port>
 	</wsdl:service>
 
-	<wsdl:binding name="NotificationProducerJBI"
-		type="wsn-bw:NotificationProducer">
-		<soap:binding transport="http://schemas.xmlsoap.org/soap/http"
-			style="document" />
+	<wsdl:binding name="NotificationProducerSoap" type="wsn-bw:NotificationProducer">
+		<soap:binding transport="http://schemas.xmlsoap.org/soap/http" style="document" />
 		<wsdl:operation name="Subscribe">
 			<wsdl:input>
 				<soap:body use="literal" />
@@ -81,33 +76,25 @@
 				<soap:fault use="literal" name="InvalidFilterFault" />
 			</wsdl:fault>
 			<wsdl:fault name="TopicExpressionDialectUnknownFault">
-				<soap:fault use="literal"
-					name="TopicExpressionDialectUnknownFault" />
+				<soap:fault use="literal" name="TopicExpressionDialectUnknownFault" />
 			</wsdl:fault>
 			<wsdl:fault name="InvalidTopicExpressionFault">
-				<soap:fault use="literal"
-					name="InvalidTopicExpressionFault" />
+				<soap:fault use="literal" name="InvalidTopicExpressionFault" />
 			</wsdl:fault>
 			<wsdl:fault name="TopicNotSupportedFault">
 				<soap:fault use="literal" name="TopicNotSupportedFault" />
 			</wsdl:fault>
-			<wsdl:fault
-				name="InvalidProducerPropertiesExpressionFault">
-				<soap:fault use="literal"
-					name="InvalidProducerPropertiesExpressionFault" />
+			<wsdl:fault name="InvalidProducerPropertiesExpressionFault">
+				<soap:fault use="literal" name="InvalidProducerPropertiesExpressionFault" />
 			</wsdl:fault>
 			<wsdl:fault name="InvalidMessageContentExpressionFault">
-				<soap:fault use="literal"
-					name="InvalidMessageContentExpressionFault" />
+				<soap:fault use="literal" name="InvalidMessageContentExpressionFault" />
 			</wsdl:fault>
-			<wsdl:fault
-				name="UnacceptableInitialTerminationTimeFault">
-				<soap:fault use="literal"
-					name="UnacceptableInitialTerminationTimeFault" />
+			<wsdl:fault name="UnacceptableInitialTerminationTimeFault">
+				<soap:fault use="literal" name="UnacceptableInitialTerminationTimeFault" />
 			</wsdl:fault>
 			<wsdl:fault name="SubscribeCreationFailedFault">
-				<soap:fault use="literal"
-					name="SubscribeCreationFailedFault" />
+				<soap:fault use="literal" name="SubscribeCreationFailedFault" />
 			</wsdl:fault>
 		</wsdl:operation>
 		<wsdl:operation name="GetCurrentMessage">
@@ -121,30 +108,26 @@
 				<soap:fault use="literal" name="ResourceUnknownFault" />
 			</wsdl:fault>
 			<wsdl:fault name="TopicExpressionDialectUnknownFault">
-				<soap:fault use="literal"
-					name="TopicExpressionDialectUnknownFault" />
+				<soap:fault use="literal" name="TopicExpressionDialectUnknownFault" />
 			</wsdl:fault>
 			<wsdl:fault name="InvalidTopicExpressionFault">
-				<soap:fault use="literal"
-					name="InvalidTopicExpressionFault" />
+				<soap:fault use="literal" name="InvalidTopicExpressionFault" />
 			</wsdl:fault>
 			<wsdl:fault name="TopicNotSupportedFault">
 				<soap:fault use="literal" name="TopicNotSupportedFault" />
 			</wsdl:fault>
 			<wsdl:fault name="NoCurrentMessageOnTopicFault">
-				<soap:fault use="literal"
-					name="NoCurrentMessageOnTopicFault" />
+				<soap:fault use="literal" name="NoCurrentMessageOnTopicFault" />
 			</wsdl:fault>
 		</wsdl:operation>
 	</wsdl:binding>
 	<wsdl:service name="NotificationProducerService">
-		<wsdl:port name="JBI" binding="tns:NotificationProducerJBI">
-			<soap:address
-				location="http://servicemix.org/wsnotification" />
+		<wsdl:port name="Soap" binding="tns:NotificationProducerSoap">
+			<soap:address location="http://servicemix.org/wsnotification" />
 		</wsdl:port>
 	</wsdl:service>
 
-	<wsdl:binding name="NotificationBrokerJBI"
+	<wsdl:binding name="NotificationBrokerSoap"
 		type="wsn-brw:NotificationBroker">
 		<soap:binding transport="http://schemas.xmlsoap.org/soap/http"
 			style="document" />
@@ -272,13 +255,13 @@
 		 -->
 	</wsdl:binding>
 	<wsdl:service name="NotificationBrokerService">
-		<wsdl:port name="JBI" binding="tns:NotificationBrokerJBI">
+		<wsdl:port name="Soap" binding="tns:NotificationBrokerSoap">
 			<soap:address
 				location="http://servicemix.org/wsnotification" />
 		</wsdl:port>
 	</wsdl:service>
 
-	<wsdl:binding name="SubscriptionManagerJBI"
+	<wsdl:binding name="SubscriptionManagerSoap"
 		type="wsn-bw:SubscriptionManager">
 		<soap:binding transport="http://schemas.xmlsoap.org/soap/http"
 			style="document" />
@@ -314,13 +297,13 @@
 		</wsdl:operation>
 	</wsdl:binding>
 	<wsdl:service name="SubscriptionManagerService">
-		<wsdl:port name="JBI" binding="tns:SubscriptionManagerJBI">
+		<wsdl:port name="Soap" binding="tns:SubscriptionManagerSoap">
 			<soap:address
 				location="http://servicemix.org/wsnotification" />
 		</wsdl:port>
 	</wsdl:service>
 
-	<wsdl:binding name="PausableSubscriptionManagerJBI"
+	<wsdl:binding name="PausableSubscriptionManagerSoap"
 		type="wsn-bw:PausableSubscriptionManager">
 		<soap:binding transport="http://schemas.xmlsoap.org/soap/http"
 			style="document" />
@@ -385,14 +368,14 @@
 		</wsdl:operation>
 	</wsdl:binding>
 	<wsdl:service name="PausableSubscriptionManagerService">
-		<wsdl:port name="JBI"
-			binding="tns:PausableSubscriptionManagerJBI">
+		<wsdl:port name="Soap"
+			binding="tns:PausableSubscriptionManagerSoap">
 			<soap:address
 				location="http://servicemix.org/wsnotification" />
 		</wsdl:port>
 	</wsdl:service>
 
-	<wsdl:binding name="PublisherRegistrationManagerJBI"
+	<wsdl:binding name="PublisherRegistrationManagerSoap"
 		type="wsn-brw:PublisherRegistrationManager">
 		<soap:binding transport="http://schemas.xmlsoap.org/soap/http"
 			style="document" />
@@ -413,14 +396,14 @@
 		</wsdl:operation>
 	</wsdl:binding>
 	<wsdl:service name="PublisherRegistrationManagerService">
-		<wsdl:port name="JBI"
-			binding="tns:PublisherRegistrationManagerJBI">
+		<wsdl:port name="Soap"
+			binding="tns:PublisherRegistrationManagerSoap">
 			<soap:address
 				location="http://servicemix.org/wsnotification" />
 		</wsdl:port>
 	</wsdl:service>
 
-	<wsdl:binding name="CreatePullPointJBI"
+	<wsdl:binding name="CreatePullPointSoap"
 		type="wsn-bw:CreatePullPoint">
 		<soap:binding transport="http://schemas.xmlsoap.org/soap/http"
 			style="document" />
@@ -438,14 +421,14 @@
 		</wsdl:operation>
 	</wsdl:binding>
 	<wsdl:service name="CreatePullPointService">
-		<wsdl:port name="JBI" binding="tns:CreatePullPointJBI">
+		<wsdl:port name="Soap" binding="tns:CreatePullPointSoap">
 			<soap:address
 				location="http://servicemix.org/wsnotification" />
 		</wsdl:port>
 	</wsdl:service>
 
 
-	<wsdl:binding name="PullPointJBI" type="wsn-bw:PullPoint">
+	<wsdl:binding name="PullPointSoap" type="wsn-bw:PullPoint">
 		<soap:binding transport="http://schemas.xmlsoap.org/soap/http"
 			style="document" />
 		<wsdl:operation name="GetMessages">
@@ -478,13 +461,13 @@
 		</wsdl:operation>
 	</wsdl:binding>
 	<wsdl:service name="PullPointService">
-		<wsdl:port name="JBI" binding="tns:PullPointJBI">
+		<wsdl:port name="Soap" binding="tns:PullPointSoap">
 			<soap:address
 				location="http://servicemix.org/wsnotification" />
 		</wsdl:port>
 	</wsdl:service>
 
-    <wsdl:binding name="GetResourcePropertyJBI" type="wsrf-rpw:GetResourceProperty">
+    <wsdl:binding name="GetResourcePropertySoap" type="wsrf-rpw:GetResourceProperty">
         <soap:binding transport="http://schemas.xmlsoap.org/soap/http"
             style="document" />
         <wsdl:operation name="GetResourceProperty">
@@ -506,7 +489,7 @@
         </wsdl:operation>
     </wsdl:binding>
     <wsdl:service name="GetResourcePropertyService">
-        <wsdl:port name="JBI" binding="tns:GetResourcePropertyJBI">
+        <wsdl:port name="Soap" binding="tns:GetResourcePropertySoap">
             <soap:address
                 location="http://servicemix.org/wsnotification" />
         </wsdl:port>

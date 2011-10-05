@@ -8,7 +8,7 @@ import javax.jws.WebService;
 import javax.xml.namespace.QName;
 import javax.xml.ws.Endpoint;
 import javax.xml.ws.Service;
-import javax.xml.ws.wsaddressing.W3CEndpointReferenceBuilder;
+import javax.xml.ws.wsaddressing.W3CEndpointReference;
 
 import junit.framework.TestCase;
 import org.apache.activemq.ActiveMQConnectionFactory;
@@ -33,6 +33,12 @@ import org.oasis_open.docs.wsn.bw_2.NotificationConsumer;
  */
 public class WsnBrokerTest extends TestCase {
 
+    @Override
+    public void setUp() throws Exception {
+        System.setProperty("java.util.logging.config.file", getClass().getClassLoader().getResource("logging.properties").getPath());
+        java.util.logging.LogManager.getLogManager().readConfiguration();
+    }
+
     public void testBroker() throws Exception {
         ActiveMQConnectionFactory activemq = new ActiveMQConnectionFactory("vm:(broker:(tcp://localhost:6000)?persistent=false)");
         JaxwsNotificationBroker wsnBroker = new JaxwsNotificationBroker("WSNotificationBroker", activemq);
@@ -55,7 +61,9 @@ public class WsnBrokerTest extends TestCase {
         topic.setDialect("http://docs.oasis-open.org/wsn/t-1/TopicExpression/Simple");
         topic.getContent().add("myTopic");
         filter.getAny().add(new ObjectFactory().createTopicExpression(topic));
-        subscribeRequest.setConsumerReference(new W3CEndpointReferenceBuilder().address("http://localhost:8182/test/consumer").build());
+        subscribeRequest.setConsumerReference(
+                epConsumer.getEndpointReference(W3CEndpointReference.class)
+        );
         subscribeRequest.setFilter(filter);
         SubscribeResponse subscribeResponse = broker.subscribe(subscribeRequest);
 
@@ -69,12 +77,12 @@ public class WsnBrokerTest extends TestCase {
 
         synchronized (consumer.notifications) {
             broker.notify(notify);
-            consumer.notifications.wait(5000);
+            consumer.notifications.wait(1000000);
         }
         assertEquals(1, consumer.notifications.size());
     }
 
-    @WebService
+    @WebService(endpointInterface = "org.oasis_open.docs.wsn.bw_2.NotificationConsumer")
     public static class TestConsumer implements NotificationConsumer {
 
         public final List<Notify> notifications = new ArrayList<Notify>();

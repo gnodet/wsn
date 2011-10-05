@@ -1,5 +1,6 @@
 package org.apache.servicemix.wsn.jaxws;
 
+import javax.jws.WebService;
 import javax.xml.namespace.QName;
 import javax.xml.ws.Service;
 
@@ -19,13 +20,7 @@ import org.oasis_open.docs.wsn.bw_2.UnacceptableInitialTerminationTimeFault;
 import org.oasis_open.docs.wsn.bw_2.UnrecognizedPolicyRequestFault;
 import org.oasis_open.docs.wsn.bw_2.UnsupportedPolicyRequestFault;
 
-/**
- * Created by IntelliJ IDEA.
- * User: gnodet
- * Date: 10/4/11
- * Time: 8:57 AM
- * To change this template use File | Settings | File Templates.
- */
+@WebService(endpointInterface = "org.oasis_open.docs.wsn.bw_2.PausableSubscriptionManager")
 public class JaxwsSubscription extends JmsSubscription {
 
     private NotificationConsumer consumer;
@@ -43,10 +38,12 @@ public class JaxwsSubscription extends JmsSubscription {
         super.validateSubscription(subscribeRequest);
         try {
             Service service = Service.create(
-                    getClass().getClassLoader().getResource("/org/apache/servicemix/wsn/bw-2.wsdl"),
-                    new QName("http://docs.oasis-open.org/wsn/bw-2", "NotificationConsumer")
+                    getClass().getClassLoader().getResource("org/apache/servicemix/wsn/wsn.wsdl"),
+                    new QName("http://servicemix.apache.org/wsn/jaxws", "NotificationConsumerService")
             );
-            consumer = service.getPort(subscribeRequest.getConsumerReference(), NotificationConsumer.class);
+            consumer = service.getPort(
+                    subscribeRequest.getConsumerReference(),
+                    NotificationConsumer.class);
         } catch (Exception e) {
             SubscribeCreationFailedFaultType fault = new SubscribeCreationFailedFaultType();
             throw new SubscribeCreationFailedFault("Unable to resolve consumer reference endpoint", fault, e);

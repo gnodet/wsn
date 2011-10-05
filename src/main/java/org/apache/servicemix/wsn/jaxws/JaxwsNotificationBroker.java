@@ -1,18 +1,13 @@
 package org.apache.servicemix.wsn.jaxws;
 
 import javax.jms.ConnectionFactory;
+import javax.jws.WebService;
 
 import org.apache.servicemix.wsn.jms.JmsNotificationBroker;
 import org.apache.servicemix.wsn.jms.JmsPublisher;
 import org.apache.servicemix.wsn.jms.JmsSubscription;
 
-/**
- * Created by IntelliJ IDEA.
- * User: gnodet
- * Date: 10/4/11
- * Time: 8:56 AM
- * To change this template use File | Settings | File Templates.
- */
+@WebService(endpointInterface = "org.oasis_open.docs.wsn.brw_2.NotificationBroker")
 public class JaxwsNotificationBroker extends JmsNotificationBroker {
 
     public JaxwsNotificationBroker(String name) {
