@@ -37,7 +37,6 @@ import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
 import org.apache.servicemix.wsn.AbstractSubscription;
-import org.apache.servicemix.wsn.client.AbstractWSAClient;
 import org.oasis_open.docs.wsn.b_2.InvalidTopicExpressionFaultType;
 import org.oasis_open.docs.wsn.b_2.NotificationMessageHolderType;
 import org.oasis_open.docs.wsn.b_2.Notify;
@@ -197,7 +196,7 @@ public abstract class JmsSubscription extends AbstractSubscription implements Me
                     ith.remove();
                 } else {
                     h.setTopic(topic);
-                    h.setSubscriptionReference(AbstractWSAClient.createWSA(getAddress()));
+                    h.setSubscriptionReference(getEpr());
                 }
             }
             if (!notify.getNotificationMessage().isEmpty()) {

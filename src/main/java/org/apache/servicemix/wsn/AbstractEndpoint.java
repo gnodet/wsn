@@ -16,6 +16,8 @@
  */
 package org.apache.servicemix.wsn;
 
+import javax.xml.ws.wsaddressing.W3CEndpointReference;
+
 public abstract class AbstractEndpoint {
 
     protected final String name;
@@ -51,6 +53,13 @@ public abstract class AbstractEndpoint {
         if (endpoint != null) {
             manager.unregister(endpoint);
         }
+    }
+
+    public W3CEndpointReference getEpr() {
+        if (endpoint != null) {
+            return manager.getEpr(endpoint);
+        }
+        return null;
     }
 
     public EndpointManager getManager() {

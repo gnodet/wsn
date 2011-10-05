@@ -16,10 +16,13 @@
  */
 package org.apache.servicemix.wsn;
 
+import javax.xml.ws.wsaddressing.W3CEndpointReference;
+
 public interface EndpointManager {
 
     Object register(String address, Object service) throws EndpointRegistrationException;
 
     void unregister(Object endpoint) throws EndpointRegistrationException;
 
+    W3CEndpointReference getEpr(Object endpoint);
 }

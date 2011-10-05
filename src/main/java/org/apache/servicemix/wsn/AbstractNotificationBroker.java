@@ -27,8 +27,8 @@ import javax.jws.WebService;
 import javax.xml.namespace.QName;
 import javax.xml.ws.wsaddressing.W3CEndpointReference;
 
-import org.apache.servicemix.id.IdGenerator;
-import org.apache.servicemix.wsn.client.AbstractWSAClient;
+import org.apache.servicemix.wsn.util.WSNHelper;
+import org.apache.servicemix.wsn.util.IdGenerator;
 import org.oasis_open.docs.wsn.b_2.GetCurrentMessage;
 import org.oasis_open.docs.wsn.b_2.GetCurrentMessageResponse;
 import org.oasis_open.docs.wsn.b_2.NoCurrentMessageOnTopicFaultType;
@@ -138,7 +138,7 @@ public abstract class AbstractNotificationBroker extends AbstractEndpoint implem
     protected AbstractPublisher getPublisher(W3CEndpointReference producerReference) {
         AbstractPublisher publisher = null;
         if (producerReference != null) {
-            String address = AbstractWSAClient.getWSAAddress(producerReference);
+            String address = WSNHelper.getWSAAddress(producerReference);
             publisher = publishers.get(address);
         }
         if (publisher == null) {
@@ -197,7 +197,7 @@ public abstract class AbstractNotificationBroker extends AbstractEndpoint implem
             }
             subscription.register();
             SubscribeResponse response = new SubscribeResponse();
-            response.setSubscriptionReference(AbstractWSAClient.createWSA(subscription.getAddress()));
+            response.setSubscriptionReference(subscription.getEpr());
             success = true;
             return response;
         } catch (EndpointRegistrationException e) {
@@ -291,7 +291,7 @@ public abstract class AbstractNotificationBroker extends AbstractEndpoint implem
             publisher.register();
             publisher.create(registerPublisherRequest);
             RegisterPublisherResponse response = new RegisterPublisherResponse();
-            response.setPublisherRegistrationReference(AbstractWSAClient.createWSA(publisher.getAddress()));
+            response.setPublisherRegistrationReference(publisher.getEpr());
             success = true;
             return response;
         } catch (EndpointRegistrationException e) {

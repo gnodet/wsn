@@ -1,10 +1,25 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.servicemix.wsn.jaxws;
 
 import javax.jws.WebService;
-import javax.xml.namespace.QName;
-import javax.xml.ws.Service;
 
 import org.apache.servicemix.wsn.jms.JmsSubscription;
+import org.apache.servicemix.wsn.util.WSNHelper;
 import org.oasis_open.docs.wsn.b_2.Notify;
 import org.oasis_open.docs.wsn.b_2.Subscribe;
 import org.oasis_open.docs.wsn.b_2.SubscribeCreationFailedFaultType;
@@ -37,13 +52,7 @@ public class JaxwsSubscription extends JmsSubscription {
             UnsupportedPolicyRequestFault, UnrecognizedPolicyRequestFault {
         super.validateSubscription(subscribeRequest);
         try {
-            Service service = Service.create(
-                    getClass().getClassLoader().getResource("org/apache/servicemix/wsn/wsn.wsdl"),
-                    new QName("http://servicemix.apache.org/wsn/jaxws", "NotificationConsumerService")
-            );
-            consumer = service.getPort(
-                    subscribeRequest.getConsumerReference(),
-                    NotificationConsumer.class);
+            consumer = WSNHelper.getPort(subscribeRequest.getConsumerReference(), NotificationConsumer.class);
         } catch (Exception e) {
             SubscribeCreationFailedFaultType fault = new SubscribeCreationFailedFaultType();
             throw new SubscribeCreationFailedFault("Unable to resolve consumer reference endpoint", fault, e);

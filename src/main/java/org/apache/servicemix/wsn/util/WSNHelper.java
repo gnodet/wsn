@@ -14,24 +14,40 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.servicemix.wsn.client;
+package org.apache.servicemix.wsn.util;
 
+import javax.xml.namespace.QName;
 import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.transform.Source;
 import javax.xml.transform.dom.DOMResult;
+import javax.xml.ws.EndpointReference;
+import javax.xml.ws.Service;
 import javax.xml.ws.wsaddressing.W3CEndpointReference;
+import javax.xml.ws.wsaddressing.W3CEndpointReferenceBuilder;
 
-import org.apache.servicemix.common.util.DOMUtil;
-import org.apache.servicemix.jbi.jaxp.StringSource;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
-public abstract class AbstractWSAClient {
+public abstract class WSNHelper {
+
+    public static <T> T getPort(EndpointReference ref, Class<T> serviceInterface) {
+        if (!(ref instanceof W3CEndpointReference)) {
+            throw new IllegalArgumentException("Unsupported endpoint reference: " + (ref != null ? ref.toString() : "null"));
+        }
+        W3CEndpointReference w3cEpr = (W3CEndpointReference) ref;
+        String address = getWSAAddress(w3cEpr);
+        return getPort(address, serviceInterface);
+    }
+
+    public static <T> T getPort(String address, Class<T> serviceInterface) {
+        Service service = Service.create(
+                WSNHelper.class.getClassLoader().getResource("org/apache/servicemix/wsn/wsn.wsdl"),
+                new QName("http://servicemix.apache.org/wsn/jaxws", serviceInterface.getSimpleName() + "Service")
+        );
+        return service.getPort(createWSA(address), serviceInterface);
+    }
 
     public static W3CEndpointReference createWSA(String address) {
-        Source src = new StringSource("<EndpointReference xmlns='http://www.w3.org/2005/08/addressing'><Address>"
-                + address + "</Address></EndpointReference>");
-        return new W3CEndpointReference(src);
+        return new W3CEndpointReferenceBuilder().address(address).build();
     }
 
     public static String getWSAAddress(W3CEndpointReference ref) {

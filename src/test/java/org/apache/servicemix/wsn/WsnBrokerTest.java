@@ -1,19 +1,32 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.servicemix.wsn;
 
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import javax.jws.WebParam;
 import javax.jws.WebService;
-import javax.xml.namespace.QName;
 import javax.xml.ws.Endpoint;
-import javax.xml.ws.Service;
 import javax.xml.ws.wsaddressing.W3CEndpointReferenceBuilder;
 
 import junit.framework.TestCase;
 import org.apache.activemq.ActiveMQConnectionFactory;
-import org.apache.servicemix.wsn.jaxws.JaxwsEndpointManager;
 import org.apache.servicemix.wsn.jaxws.JaxwsNotificationBroker;
+import org.apache.servicemix.wsn.util.WSNHelper;
 import org.oasis_open.docs.wsn.b_2.FilterType;
 import org.oasis_open.docs.wsn.b_2.NotificationMessageHolderType;
 import org.oasis_open.docs.wsn.b_2.Notify;
@@ -21,16 +34,11 @@ import org.oasis_open.docs.wsn.b_2.ObjectFactory;
 import org.oasis_open.docs.wsn.b_2.Subscribe;
 import org.oasis_open.docs.wsn.b_2.SubscribeResponse;
 import org.oasis_open.docs.wsn.b_2.TopicExpressionType;
+import org.oasis_open.docs.wsn.b_2.Unsubscribe;
 import org.oasis_open.docs.wsn.brw_2.NotificationBroker;
 import org.oasis_open.docs.wsn.bw_2.NotificationConsumer;
+import org.oasis_open.docs.wsn.bw_2.PausableSubscriptionManager;
 
-/**
- * Created by IntelliJ IDEA.
- * User: gnodet
- * Date: 10/4/11
- * Time: 3:19 PM
- * To change this template use File | Settings | File Templates.
- */
 public class WsnBrokerTest extends TestCase {
 
     @Override
@@ -42,14 +50,10 @@ public class WsnBrokerTest extends TestCase {
     public void testBroker() throws Exception {
         ActiveMQConnectionFactory activemq = new ActiveMQConnectionFactory("vm:(broker:(tcp://localhost:6000)?persistent=false)");
         JaxwsNotificationBroker wsnBroker = new JaxwsNotificationBroker("WSNotificationBroker", activemq);
-        wsnBroker.setManager(new JaxwsEndpointManager());
         wsnBroker.setAddress("http://0.0.0.0:8181/wsn/NotificationBroker");
         wsnBroker.init();
 
-        Service brokerClient = Service.create(
-                new URL("http://0.0.0.0:8181/wsn/NotificationBroker?wsdl"),
-                new QName("http://jaxws.wsn.servicemix.apache.org/", "JaxwsNotificationBrokerService"));
-        NotificationBroker broker = brokerClient.getPort(NotificationBroker.class);
+        NotificationBroker broker = WSNHelper.getPort("http://0.0.0.0:8181/wsn/NotificationBroker", NotificationBroker.class);
 
         TestConsumer consumer = new TestConsumer();
         Endpoint epConsumer = Endpoint.create(consumer);
@@ -75,11 +79,17 @@ public class WsnBrokerTest extends TestCase {
         message.setMessage(msg);
         notify.getNotificationMessage().add(message);
 
+
+
         synchronized (consumer.notifications) {
             broker.notify(notify);
             consumer.notifications.wait(1000000);
         }
         assertEquals(1, consumer.notifications.size());
+
+
+        WSNHelper.getPort(subscribeResponse.getSubscriptionReference(), PausableSubscriptionManager.class).unsubscribe(new Unsubscribe());
+
     }
 
     @WebService(endpointInterface = "org.oasis_open.docs.wsn.bw_2.NotificationConsumer")
