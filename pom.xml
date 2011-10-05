@@ -13,6 +13,7 @@
 	</properties>
 
 	<dependencies>
+        <!--
         <dependency>
             <groupId>org.apache.cxf</groupId>
             <artifactId>cxf-rt-frontend-jaxws</artifactId>
@@ -25,6 +26,7 @@
 			<version>${cxf.version}</version>
 			<scope>test</scope>
         </dependency>
+        -->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>

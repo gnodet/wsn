@@ -8,7 +8,7 @@ import javax.jws.WebService;
 import javax.xml.namespace.QName;
 import javax.xml.ws.Endpoint;
 import javax.xml.ws.Service;
-import javax.xml.ws.wsaddressing.W3CEndpointReference;
+import javax.xml.ws.wsaddressing.W3CEndpointReferenceBuilder;
 
 import junit.framework.TestCase;
 import org.apache.activemq.ActiveMQConnectionFactory;
@@ -62,7 +62,7 @@ public class WsnBrokerTest extends TestCase {
         topic.getContent().add("myTopic");
         filter.getAny().add(new ObjectFactory().createTopicExpression(topic));
         subscribeRequest.setConsumerReference(
-                epConsumer.getEndpointReference(W3CEndpointReference.class)
+                new W3CEndpointReferenceBuilder().address("http://0.0.0.0:8182/test/consumer").build()
         );
         subscribeRequest.setFilter(filter);
         SubscribeResponse subscribeResponse = broker.subscribe(subscribeRequest);
