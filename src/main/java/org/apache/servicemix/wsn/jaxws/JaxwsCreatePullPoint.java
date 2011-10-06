@@ -16,36 +16,32 @@
  */
 package org.apache.servicemix.wsn.jaxws;
 
+import java.net.URI;
+import javax.jms.ConnectionFactory;
 import javax.jws.WebService;
 
-import org.apache.servicemix.wsn.jms.JmsPublisher;
-import org.apache.servicemix.wsn.util.WSNHelper;
-import org.oasis_open.docs.wsn.b_2.Unsubscribe;
-import org.oasis_open.docs.wsn.bw_2.PausableSubscriptionManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.servicemix.wsn.AbstractPullPoint;
+import org.apache.servicemix.wsn.jms.JmsCreatePullPoint;
 
-@WebService(endpointInterface = "org.oasis_open.docs.wsn.brw_2.PublisherRegistrationManager")
-public class JaxwsPublisher extends JmsPublisher {
+@WebService(endpointInterface = "org.oasis_open.docs.wsn.bw_2.CreatePullPoint")
+public class JaxwsCreatePullPoint extends JmsCreatePullPoint {
 
-    private final Logger logger = LoggerFactory.getLogger(JaxwsPublisher.class);
-
-    public JaxwsPublisher(String name) {
+    public JaxwsCreatePullPoint(String name) {
         super(name);
+        manager = new JaxwsEndpointManager();
+    }
+
+    public JaxwsCreatePullPoint(String name, ConnectionFactory connectionFactory) {
+        super(name, connectionFactory);
+        manager = new JaxwsEndpointManager();
     }
 
     @Override
-    protected Object startSubscription() {
-        return WSNHelper.getPort(publisherReference, PausableSubscriptionManager.class);
+    protected AbstractPullPoint createPullPoint(String name) {
+        JaxwsPullPoint pullPoint = new JaxwsPullPoint(name);
+        pullPoint.setManager(getManager());
+        pullPoint.setConnection(connection);
+        pullPoint.setAddress(URI.create(getAddress()).resolve("pullpoints/" + name).toString());
+        return pullPoint;
     }
-
-    @Override
-    protected void destroySubscription(Object sub) {
-        try {
-            ((PausableSubscriptionManager) sub).unsubscribe(new Unsubscribe());
-        } catch (Exception e) {
-            logger.info("Error while unsubscribing", e);
-        }
-    }
-
 }

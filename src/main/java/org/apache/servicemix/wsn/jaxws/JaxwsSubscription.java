@@ -51,6 +51,11 @@ public class JaxwsSubscription extends JmsSubscription {
             TopicNotSupportedFault, UnacceptableInitialTerminationTimeFault,
             UnsupportedPolicyRequestFault, UnrecognizedPolicyRequestFault {
         super.validateSubscription(subscribeRequest);
+        // TODO: implement raw notifications
+        if (useRaw) {
+            SubscribeCreationFailedFaultType fault = new SubscribeCreationFailedFaultType();
+            throw new SubscribeCreationFailedFault("Raw notifications are not supported", fault);
+        }
         try {
             consumer = WSNHelper.getPort(subscribeRequest.getConsumerReference(), NotificationConsumer.class);
         } catch (Exception e) {
@@ -61,7 +66,7 @@ public class JaxwsSubscription extends JmsSubscription {
 
     @Override
     protected void doNotify(Notify notify) {
-        // TODO: reimplement UseRaw
+        // TODO: implement raw notifications
         consumer.notify(notify);
     }
 }

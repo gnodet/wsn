@@ -18,7 +18,6 @@ package org.apache.servicemix.wsn.jms;
 
 import javax.jms.Connection;
 import javax.jms.ConnectionFactory;
-import javax.xml.namespace.QName;
 
 import org.apache.servicemix.wsn.AbstractCreatePullPoint;
 import org.apache.servicemix.wsn.AbstractPullPoint;
@@ -26,12 +25,17 @@ import org.oasis_open.docs.wsn.b_2.CreatePullPoint;
 
 public class JmsCreatePullPoint extends AbstractCreatePullPoint {
 
-    private ConnectionFactory connectionFactory;
+    protected ConnectionFactory connectionFactory;
 
-    private Connection connection;
+    protected Connection connection;
 
     public JmsCreatePullPoint(String name) {
         super(name);
+    }
+
+    public JmsCreatePullPoint(String name, ConnectionFactory connectionFactory) {
+        super(name);
+        this.connectionFactory = connectionFactory;
     }
 
     public void init() throws Exception {
