@@ -16,35 +16,21 @@
  */
 package org.apache.servicemix.wsn;
 
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
-import javax.jws.WebParam;
-import javax.jws.WebService;
-import javax.xml.ws.Endpoint;
-import javax.xml.ws.wsaddressing.W3CEndpointReferenceBuilder;
+import javax.xml.bind.JAXBElement;
+import javax.xml.namespace.QName;
 
 import junit.framework.TestCase;
 import org.apache.activemq.ActiveMQConnectionFactory;
+import org.apache.servicemix.wsn.client.Consumer;
+import org.apache.servicemix.wsn.client.CreatePullPoint;
+import org.apache.servicemix.wsn.client.NotificationBroker;
+import org.apache.servicemix.wsn.client.PullPoint;
+import org.apache.servicemix.wsn.client.Subscription;
 import org.apache.servicemix.wsn.jaxws.JaxwsCreatePullPoint;
 import org.apache.servicemix.wsn.jaxws.JaxwsNotificationBroker;
-import org.apache.servicemix.wsn.util.WSNHelper;
-import org.oasis_open.docs.wsn.b_2.CreatePullPointResponse;
-import org.oasis_open.docs.wsn.b_2.FilterType;
-import org.oasis_open.docs.wsn.b_2.GetMessages;
-import org.oasis_open.docs.wsn.b_2.GetMessagesResponse;
 import org.oasis_open.docs.wsn.b_2.NotificationMessageHolderType;
-import org.oasis_open.docs.wsn.b_2.Notify;
-import org.oasis_open.docs.wsn.b_2.ObjectFactory;
-import org.oasis_open.docs.wsn.b_2.Subscribe;
-import org.oasis_open.docs.wsn.b_2.SubscribeResponse;
-import org.oasis_open.docs.wsn.b_2.TopicExpressionType;
-import org.oasis_open.docs.wsn.b_2.Unsubscribe;
-import org.oasis_open.docs.wsn.brw_2.NotificationBroker;
-import org.oasis_open.docs.wsn.bw_2.CreatePullPoint;
-import org.oasis_open.docs.wsn.bw_2.NotificationConsumer;
-import org.oasis_open.docs.wsn.bw_2.PausableSubscriptionManager;
-import org.oasis_open.docs.wsn.bw_2.PullPoint;
 
 public class WsnBrokerTest extends TestCase {
 
@@ -69,8 +55,8 @@ public class WsnBrokerTest extends TestCase {
         createPullPointServer.setAddress("http://0.0.0.0:8181/wsn/CreatePullPoint");
         createPullPointServer.init();
 
-        notificationBroker = WSNHelper.getPort("http://0.0.0.0:8181/wsn/NotificationBroker", NotificationBroker.class);
-        createPullPoint = WSNHelper.getPort("http://0.0.0.0:8181/wsn/CreatePullPoint", CreatePullPoint.class);
+        notificationBroker = new NotificationBroker("http://0.0.0.0:8181/wsn/NotificationBroker");
+        createPullPoint = new CreatePullPoint("http://0.0.0.0:8181/wsn/CreatePullPoint");
     }
 
     @Override
@@ -80,73 +66,30 @@ public class WsnBrokerTest extends TestCase {
     }
 
     public void testBroker() throws Exception {
+        TestConsumer callback = new TestConsumer();
+        Consumer consumer = new Consumer(callback, "http://0.0.0.0:8182/test/consumer");
 
-        TestConsumer consumer = new TestConsumer();
-        Endpoint epConsumer = Endpoint.create(consumer);
-        epConsumer.publish("http://0.0.0.0:8182/test/consumer");
+        Subscription subscription = notificationBroker.subscribe(consumer, "myTopic");
 
-        Subscribe subscribeRequest = new Subscribe();
-        FilterType filter = new FilterType();
-        TopicExpressionType topic = new TopicExpressionType();
-        topic.setDialect("http://docs.oasis-open.org/wsn/t-1/TopicExpression/Simple");
-        topic.getContent().add("myTopic");
-        filter.getAny().add(new ObjectFactory().createTopicExpression(topic));
-        subscribeRequest.setConsumerReference(
-                new W3CEndpointReferenceBuilder().address("http://0.0.0.0:8182/test/consumer").build()
-        );
-        subscribeRequest.setFilter(filter);
-        SubscribeResponse subscribeResponse = notificationBroker.subscribe(subscribeRequest);
-
-        Notify notify = new Notify();
-        NotificationMessageHolderType message = new NotificationMessageHolderType();
-        NotificationMessageHolderType.Message msg = new NotificationMessageHolderType.Message();
-        msg.setAny(subscribeResponse);
-        message.setTopic(topic);
-        message.setMessage(msg);
-        notify.getNotificationMessage().add(message);
-
-
-
-        synchronized (consumer.notifications) {
-            notificationBroker.notify(notify);
-            consumer.notifications.wait(1000000);
+        synchronized (callback.notifications) {
+            notificationBroker.notify("myTopic", new JAXBElement(new QName("urn:test:org", "foo"), String.class, "bar"));
+            callback.notifications.wait(1000000);
         }
-        assertEquals(1, consumer.notifications.size());
+        assertEquals(1, callback.notifications.size());
 
-
-        WSNHelper.getPort(subscribeResponse.getSubscriptionReference(), PausableSubscriptionManager.class).unsubscribe(new Unsubscribe());
-
+        subscription.unsubscribe();
+        consumer.stop();
     }
 
     public void testPullPoint() throws Exception {
-        CreatePullPointResponse response = createPullPoint.createPullPoint(new org.oasis_open.docs.wsn.b_2.CreatePullPoint());
-        PullPoint pullPoint = WSNHelper.getPort(response.getPullPoint(), PullPoint.class);
-
-        Subscribe subscribeRequest = new Subscribe();
-        FilterType filter = new FilterType();
-        TopicExpressionType topic = new TopicExpressionType();
-        topic.setDialect("http://docs.oasis-open.org/wsn/t-1/TopicExpression/Simple");
-        topic.getContent().add("myTopic");
-        filter.getAny().add(new ObjectFactory().createTopicExpression(topic));
-        subscribeRequest.setConsumerReference(response.getPullPoint());
-        subscribeRequest.setFilter(filter);
-        SubscribeResponse subscribeResponse = notificationBroker.subscribe(subscribeRequest);
-
-        Notify notify = new Notify();
-        NotificationMessageHolderType message = new NotificationMessageHolderType();
-        NotificationMessageHolderType.Message msg = new NotificationMessageHolderType.Message();
-        msg.setAny(subscribeResponse);
-        message.setTopic(topic);
-        message.setMessage(msg);
-        notify.getNotificationMessage().add(message);
-        notificationBroker.notify(notify);
+        PullPoint pullPoint = createPullPoint.create();
+        Subscription subscription = notificationBroker.subscribe(pullPoint, "myTopic");
+        notificationBroker.notify("myTopic", new JAXBElement(new QName("urn:test:org", "foo"), String.class, "bar"));
 
         boolean received = false;
         for (int i = 0; i < 50; i++) {
-            GetMessages getMessage = new GetMessages();
-            getMessage.setMaximumNumber(BigInteger.TEN);
-            GetMessagesResponse getMessagesResponse = pullPoint.getMessages(getMessage);
-            if (!getMessagesResponse.getNotificationMessage().isEmpty()) {
+            List<NotificationMessageHolderType> messages = pullPoint.getMessages(10);
+            if (!messages.isEmpty()) {
                 received = true;
                  break;
             }
@@ -156,14 +99,13 @@ public class WsnBrokerTest extends TestCase {
     }
 
 
-    @WebService(endpointInterface = "org.oasis_open.docs.wsn.bw_2.NotificationConsumer")
-    public static class TestConsumer implements NotificationConsumer {
+    public static class TestConsumer implements Consumer.Callback {
 
-        public final List<Notify> notifications = new ArrayList<Notify>();
+        public final List<NotificationMessageHolderType> notifications = new ArrayList<NotificationMessageHolderType>();
 
-        public void notify(@WebParam(partName = "Notify", name = "Notify", targetNamespace = "http://docs.oasis-open.org/wsn/b-2") Notify notify) {
+        public void notify(NotificationMessageHolderType message) {
             synchronized (notifications) {
-                notifications.add(notify);
+                notifications.add(message);
                 notifications.notify();
             }
         }
