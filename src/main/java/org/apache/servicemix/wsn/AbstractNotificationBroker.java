@@ -274,24 +274,20 @@ public abstract class AbstractNotificationBroker extends AbstractEndpoint implem
             TopicNotSupportedFault {
 
         logger.debug("RegisterPublisher");
-        return handleRegisterPublisher(registerPublisherRequest, null);
+        return handleRegisterPublisher(registerPublisherRequest);
     }
 
-    public RegisterPublisherResponse handleRegisterPublisher(RegisterPublisher registerPublisherRequest,
-            EndpointManager manager) throws InvalidTopicExpressionFault, PublisherRegistrationFailedFault,
+    public RegisterPublisherResponse handleRegisterPublisher(RegisterPublisher registerPublisherRequest) throws InvalidTopicExpressionFault, PublisherRegistrationFailedFault,
             PublisherRegistrationRejectedFault, ResourceUnknownFault, TopicNotSupportedFault {
         AbstractPublisher publisher = null;
         boolean success = false;
         try {
             publisher = createPublisher(idGenerator.generateSanitizedId());
-            publishers.put(publisher.getAddress(), publisher);
-            if (manager != null) {
-                publisher.setManager(manager);
-            }
             publisher.register();
             publisher.create(registerPublisherRequest);
             RegisterPublisherResponse response = new RegisterPublisherResponse();
             response.setPublisherRegistrationReference(publisher.getEpr());
+            publishers.put(WSNHelper.getWSAAddress(publisher.getPublisherReference()), publisher);
             success = true;
             return response;
         } catch (EndpointRegistrationException e) {
@@ -300,7 +296,6 @@ public abstract class AbstractNotificationBroker extends AbstractEndpoint implem
             throw new PublisherRegistrationFailedFault("Unable to register new endpoint", fault, e);
         } finally {
             if (!success && publisher != null) {
-                publishers.remove(publisher.getAddress());
                 try {
                     publisher.destroy();
                 } catch (ResourceNotDestroyedFault e) {

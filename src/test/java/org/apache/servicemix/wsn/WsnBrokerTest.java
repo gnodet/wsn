@@ -17,7 +17,9 @@
 package org.apache.servicemix.wsn;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javax.xml.bind.JAXBElement;
 import javax.xml.namespace.QName;
 
@@ -26,11 +28,15 @@ import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.servicemix.wsn.client.Consumer;
 import org.apache.servicemix.wsn.client.CreatePullPoint;
 import org.apache.servicemix.wsn.client.NotificationBroker;
+import org.apache.servicemix.wsn.client.Publisher;
 import org.apache.servicemix.wsn.client.PullPoint;
+import org.apache.servicemix.wsn.client.Registration;
 import org.apache.servicemix.wsn.client.Subscription;
 import org.apache.servicemix.wsn.jaxws.JaxwsCreatePullPoint;
 import org.apache.servicemix.wsn.jaxws.JaxwsNotificationBroker;
+import org.apache.servicemix.wsn.util.WSNHelper;
 import org.oasis_open.docs.wsn.b_2.NotificationMessageHolderType;
+import org.oasis_open.docs.wsn.b_2.TopicExpressionType;
 
 public class WsnBrokerTest extends TestCase {
 
@@ -76,6 +82,8 @@ public class WsnBrokerTest extends TestCase {
             callback.notifications.wait(1000000);
         }
         assertEquals(1, callback.notifications.size());
+        NotificationMessageHolderType message = callback.notifications.get(0);
+        assertEquals(WSNHelper.getWSAAddress(subscription.getEpr()), WSNHelper.getWSAAddress(message.getSubscriptionReference()));
 
         subscription.unsubscribe();
         consumer.stop();
@@ -96,8 +104,59 @@ public class WsnBrokerTest extends TestCase {
             Thread.sleep(100);
         }
         assertTrue(received);
+
+        subscription.unsubscribe();
+        pullPoint.destroy();
     }
 
+    public void testPublisher() throws Exception {
+        TestConsumer consumerCallback = new TestConsumer();
+        Consumer consumer = new Consumer(consumerCallback, "http://0.0.0.0:8182/test/consumer");
+
+        Subscription subscription = notificationBroker.subscribe(consumer, "myTopic");
+
+        PublisherCallback publisherCallback = new PublisherCallback();
+        Publisher publisher = new Publisher(publisherCallback, "http://0.0.0.0:8182/test/publisher");
+        Registration registration = notificationBroker.registerPublisher(publisher, "myTopic");
+
+        synchronized (consumerCallback.notifications) {
+            notificationBroker.notify(publisher, "myTopic", new JAXBElement(new QName("urn:test:org", "foo"), String.class, "bar"));
+            consumerCallback.notifications.wait(1000000);
+        }
+        assertEquals(1, consumerCallback.notifications.size());
+        NotificationMessageHolderType message = consumerCallback.notifications.get(0);
+        assertEquals(WSNHelper.getWSAAddress(subscription.getEpr()), WSNHelper.getWSAAddress(message.getSubscriptionReference()));
+        assertEquals(WSNHelper.getWSAAddress(publisher.getEpr()), WSNHelper.getWSAAddress(message.getProducerReference()));
+
+        registration.destroy();
+        subscription.unsubscribe();
+        publisher.stop();
+        consumer.stop();
+    }
+
+    public void testPublisherOnDemand() throws Exception {
+        TestConsumer consumerCallback = new TestConsumer();
+        Consumer consumer = new Consumer(consumerCallback, "http://0.0.0.0:8182/test/consumer");
+
+        PublisherCallback publisherCallback = new PublisherCallback();
+        Publisher publisher = new Publisher(publisherCallback, "http://0.0.0.0:8182/test/publisher");
+        Registration registration = notificationBroker.registerPublisher(publisher, Arrays.asList("myTopic1", "myTopic2"), true);
+
+        Subscription subscription = notificationBroker.subscribe(consumer, "myTopic1");
+        assertTrue(publisherCallback.subscribed.get());
+
+        synchronized (consumerCallback.notifications) {
+            notificationBroker.notify(publisher, "myTopic1", new JAXBElement(new QName("urn:test:org", "foo"), String.class, "bar"));
+            consumerCallback.notifications.wait(1000000);
+        }
+
+        subscription.unsubscribe();
+        registration.destroy();
+        publisher.stop();
+        consumer.stop();
+
+        assertTrue(publisherCallback.unsubscribed.get());
+    }
 
     public static class TestConsumer implements Consumer.Callback {
 
@@ -108,6 +167,19 @@ public class WsnBrokerTest extends TestCase {
                 notifications.add(message);
                 notifications.notify();
             }
+        }
+    }
+
+    public static class PublisherCallback implements Publisher.Callback {
+        public final AtomicBoolean subscribed = new AtomicBoolean(false);
+        public final AtomicBoolean unsubscribed = new AtomicBoolean(false);
+
+        public void subscribe(TopicExpressionType topic) {
+            subscribed.set(true);
+        }
+
+        public void unsubscribe(TopicExpressionType topic) {
+            unsubscribed.set(true);
         }
     }
 

@@ -39,7 +39,7 @@ public class JmsTopicExpressionConverter {
 
     public TopicExpressionType toTopicExpression(String name) {
         TopicExpressionType answer = new TopicExpressionType();
-        answer.getContent().add(QName.valueOf(name));
+        answer.getContent().add(name);
         answer.setDialect(SIMPLE_DIALECT);
         return answer;
     }

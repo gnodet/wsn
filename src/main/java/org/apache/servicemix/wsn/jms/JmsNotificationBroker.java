@@ -63,6 +63,7 @@ public abstract class JmsNotificationBroker extends AbstractNotificationBroker {
     @Override
     protected AbstractPublisher createPublisher(String name) {
         JmsPublisher publisher = createJmsPublisher(name);
+        publisher.setAddress(URI.create(getAddress()).resolve("registrations/" + name).toString());
         publisher.setManager(getManager());
         publisher.setConnection(connection);
         return publisher;

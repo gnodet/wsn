@@ -17,8 +17,12 @@
 package org.apache.servicemix.wsn.jms;
 
 import java.io.StringWriter;
-
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import javax.jms.Connection;
+import javax.jms.Destination;
 import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageProducer;
@@ -34,6 +38,7 @@ import org.apache.servicemix.wsn.AbstractPublisher;
 import org.oasis_open.docs.wsn.b_2.InvalidTopicExpressionFaultType;
 import org.oasis_open.docs.wsn.b_2.NotificationMessageHolderType;
 import org.oasis_open.docs.wsn.b_2.Notify;
+import org.oasis_open.docs.wsn.b_2.TopicExpressionType;
 import org.oasis_open.docs.wsn.br_2.PublisherRegistrationFailedFaultType;
 import org.oasis_open.docs.wsn.br_2.RegisterPublisher;
 import org.oasis_open.docs.wsn.br_2.ResourceNotDestroyedFaultType;
@@ -58,9 +63,9 @@ public abstract class JmsPublisher extends AbstractPublisher implements Consumer
 
     private Topic jmsTopic;
 
-    private ConsumerEventSource advisory;
+    private List<ConsumerEventSource> advisories;
 
-    private Object subscription;
+    private Map<Destination, Object> producers;
 
     public JmsPublisher(String name) {
         super(name);
@@ -127,9 +132,14 @@ public abstract class JmsPublisher extends AbstractPublisher implements Consumer
     protected void start() throws PublisherRegistrationFailedFault {
         if (demand) {
             try {
-                advisory = new ConsumerEventSource(connection, jmsTopic);
-                advisory.setConsumerListener(this);
-                advisory.start();
+                producers = new HashMap<Destination, Object>();
+                advisories = new ArrayList<ConsumerEventSource>();
+                for (TopicExpressionType topic : this.topic) {
+                    ConsumerEventSource advisory = new ConsumerEventSource(connection, topicConverter.toActiveMQTopic(topic));
+                    advisory.setConsumerListener(this);
+                    advisory.start();
+                    advisories.add(advisory);
+                }
             } catch (Exception e) {
                 PublisherRegistrationFailedFaultType fault = new PublisherRegistrationFailedFaultType();
                 throw new PublisherRegistrationFailedFault("Error starting demand-based publisher", fault, e);
@@ -139,8 +149,10 @@ public abstract class JmsPublisher extends AbstractPublisher implements Consumer
 
     protected void destroy() throws ResourceNotDestroyedFault {
         try {
-            if (advisory != null) {
-                advisory.stop();
+            if (advisories != null) {
+                for (ConsumerEventSource advisory : advisories) {
+                    advisory.stop();
+                }
             }
         } catch (Exception e) {
             ResourceNotDestroyedFaultType fault = new ResourceNotDestroyedFaultType();
@@ -150,24 +162,25 @@ public abstract class JmsPublisher extends AbstractPublisher implements Consumer
         }
     }
 
-    public void onConsumerEvent(ConsumerEvent event) {
+    public synchronized void onConsumerEvent(ConsumerEvent event) {
+        Object producer = producers.get(event.getDestination());
         if (event.getConsumerCount() > 0) {
-            if (subscription == null) {
+            if (producer == null) {
                 // start subscription
-                subscription = startSubscription();
+                producer = startSubscription(topicConverter.toTopicExpression((Topic) event.getDestination()));
+                producers.put(event.getDestination(), producer);
             }
         } else {
-            if (subscription != null) {
+            if (producer != null) {
+                Object sub = producers.remove(event.getDestination());
                 // destroy subscription
-                Object sub = subscription;
-                subscription = null;
-                destroySubscription(sub);
+                stopSubscription(sub);
             }
         }
     }
 
-    protected abstract void destroySubscription(Object sub);
+    protected abstract Object startSubscription(TopicExpressionType topic);
 
-    protected abstract Object startSubscription();
+    protected abstract void stopSubscription(Object sub);
 
 }

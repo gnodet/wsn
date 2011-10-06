@@ -43,6 +43,6 @@ public class JaxwsNotificationBroker extends JmsNotificationBroker {
 
     @Override
     protected JmsPublisher createJmsPublisher(String name) {
-        return new JaxwsPublisher(name);
+        return new JaxwsPublisher(name, this);
     }
 }

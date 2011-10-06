@@ -16,38 +16,144 @@
  */
 package org.apache.servicemix.wsn.client;
 
+import java.util.HashMap;
+import java.util.Map;
+import javax.jws.WebParam;
+import javax.jws.WebService;
+import javax.xml.bind.JAXBElement;
+import javax.xml.ws.Endpoint;
 import javax.xml.ws.wsaddressing.W3CEndpointReference;
 
-import org.apache.servicemix.wsn.util.WSNHelper;
-import org.oasis_open.docs.wsn.br_2.DestroyRegistration;
-import org.oasis_open.docs.wsn.brw_2.PublisherRegistrationManager;
-import org.oasis_open.docs.wsn.brw_2.ResourceNotDestroyedFault;
+import org.apache.servicemix.wsn.AbstractSubscription;
+import org.apache.servicemix.wsn.util.IdGenerator;
+import org.oasis_open.docs.wsn.b_2.GetCurrentMessage;
+import org.oasis_open.docs.wsn.b_2.GetCurrentMessageResponse;
+import org.oasis_open.docs.wsn.b_2.InvalidFilterFaultType;
+import org.oasis_open.docs.wsn.b_2.InvalidTopicExpressionFaultType;
+import org.oasis_open.docs.wsn.b_2.NoCurrentMessageOnTopicFaultType;
+import org.oasis_open.docs.wsn.b_2.Renew;
+import org.oasis_open.docs.wsn.b_2.RenewResponse;
+import org.oasis_open.docs.wsn.b_2.Subscribe;
+import org.oasis_open.docs.wsn.b_2.SubscribeResponse;
+import org.oasis_open.docs.wsn.b_2.TopicExpressionType;
+import org.oasis_open.docs.wsn.b_2.Unsubscribe;
+import org.oasis_open.docs.wsn.b_2.UnsubscribeResponse;
+import org.oasis_open.docs.wsn.bw_2.InvalidFilterFault;
+import org.oasis_open.docs.wsn.bw_2.InvalidMessageContentExpressionFault;
+import org.oasis_open.docs.wsn.bw_2.InvalidProducerPropertiesExpressionFault;
+import org.oasis_open.docs.wsn.bw_2.InvalidTopicExpressionFault;
+import org.oasis_open.docs.wsn.bw_2.MultipleTopicsSpecifiedFault;
+import org.oasis_open.docs.wsn.bw_2.NoCurrentMessageOnTopicFault;
+import org.oasis_open.docs.wsn.bw_2.NotificationProducer;
+import org.oasis_open.docs.wsn.bw_2.NotifyMessageNotSupportedFault;
+import org.oasis_open.docs.wsn.bw_2.SubscribeCreationFailedFault;
+import org.oasis_open.docs.wsn.bw_2.SubscriptionManager;
+import org.oasis_open.docs.wsn.bw_2.TopicExpressionDialectUnknownFault;
+import org.oasis_open.docs.wsn.bw_2.TopicNotSupportedFault;
+import org.oasis_open.docs.wsn.bw_2.UnableToDestroySubscriptionFault;
+import org.oasis_open.docs.wsn.bw_2.UnacceptableInitialTerminationTimeFault;
+import org.oasis_open.docs.wsn.bw_2.UnacceptableTerminationTimeFault;
+import org.oasis_open.docs.wsn.bw_2.UnrecognizedPolicyRequestFault;
+import org.oasis_open.docs.wsn.bw_2.UnsupportedPolicyRequestFault;
 import org.oasis_open.docs.wsrf.rw_2.ResourceUnknownFault;
 
-public class Publisher implements Referencable {
+/**
+ * Demand-based publisher.
+ *
+ */
+@WebService(endpointInterface = "org.oasis_open.docs.wsn.bw_2.NotificationProducer")
+public class Publisher implements NotificationProducer, Referencable {
 
-    private final PublisherRegistrationManager publisher;
-    private final W3CEndpointReference epr;
-
-    public Publisher(String address) {
-        this(WSNHelper.createWSA(address));
+    public interface Callback {
+        void subscribe(TopicExpressionType topic);
+        void unsubscribe(TopicExpressionType topic);
     }
 
-    public Publisher(W3CEndpointReference epr) {
-        this.publisher = WSNHelper.getPort(epr, PublisherRegistrationManager.class);
-        this.epr = epr;
+    private final Callback callback;
+    private final String address;
+    private final Endpoint endpoint;
+    private final IdGenerator idGenerator = new IdGenerator();
+    private final Map<String, PublisherSubscription> subscriptions = new HashMap<String, PublisherSubscription>();
+
+    public Publisher(Callback callback, String address) {
+        this.callback = callback;
+        this.address = address;
+        this.endpoint = Endpoint.create(this);
+        this.endpoint.publish(address);
     }
 
-    public PublisherRegistrationManager getPublisher() {
-        return publisher;
+    public void stop() {
+        this.endpoint.stop();
     }
 
     public W3CEndpointReference getEpr() {
-        return epr;
+        return this.endpoint.getEndpointReference(W3CEndpointReference.class);
     }
 
-    public void destroyRegistration() throws ResourceUnknownFault, ResourceNotDestroyedFault {
-        publisher.destroyRegistration(new DestroyRegistration());
+    public SubscribeResponse subscribe(@WebParam(partName = "SubscribeRequest", name = "Subscribe", targetNamespace = "http://docs.oasis-open.org/wsn/b-2") Subscribe subscribeRequest) throws InvalidTopicExpressionFault, ResourceUnknownFault, InvalidProducerPropertiesExpressionFault, UnrecognizedPolicyRequestFault, TopicExpressionDialectUnknownFault, NotifyMessageNotSupportedFault, InvalidFilterFault, UnsupportedPolicyRequestFault, InvalidMessageContentExpressionFault, SubscribeCreationFailedFault, TopicNotSupportedFault, UnacceptableInitialTerminationTimeFault {
+        TopicExpressionType topic = null;
+        if (subscribeRequest.getFilter() != null) {
+            for (Object f : subscribeRequest.getFilter().getAny()) {
+                JAXBElement e = null;
+                if (f instanceof JAXBElement) {
+                    e = (JAXBElement) f;
+                    f = e.getValue();
+                }
+                if (f instanceof TopicExpressionType) {
+                    if (!e.getName().equals(AbstractSubscription.QNAME_TOPIC_EXPRESSION)) {
+                        InvalidTopicExpressionFaultType fault = new InvalidTopicExpressionFaultType();
+                        throw new InvalidTopicExpressionFault("Unrecognized TopicExpression: " + e, fault);
+                    }
+                    topic = (TopicExpressionType) f;
+                }
+            }
+        }
+        if (topic == null) {
+            InvalidFilterFaultType fault = new InvalidFilterFaultType();
+            throw new InvalidFilterFault("Must specify a topic to subscribe on", fault);
+        }
+        PublisherSubscription pub = new PublisherSubscription(topic);
+        SubscribeResponse response = new SubscribeResponse();
+        response.setSubscriptionReference(pub.getEpr());
+        callback.subscribe(topic);
+        return response;
+    }
+
+    protected void unsubscribe(TopicExpressionType topic) {
+        callback.unsubscribe(topic);
+    }
+
+    public GetCurrentMessageResponse getCurrentMessage(@WebParam(partName = "GetCurrentMessageRequest", name = "GetCurrentMessage", targetNamespace = "http://docs.oasis-open.org/wsn/b-2") GetCurrentMessage getCurrentMessageRequest) throws InvalidTopicExpressionFault, ResourceUnknownFault, TopicExpressionDialectUnknownFault, MultipleTopicsSpecifiedFault, NoCurrentMessageOnTopicFault, TopicNotSupportedFault {
+        NoCurrentMessageOnTopicFaultType fault = new NoCurrentMessageOnTopicFaultType();
+        throw new NoCurrentMessageOnTopicFault("There is no current message on this topic.", fault);
+    }
+
+    @WebService(endpointInterface = "org.oasis_open.docs.wsn.bw_2.SubscriptionManager")
+    protected class PublisherSubscription implements SubscriptionManager {
+
+        private final String id;
+        private final TopicExpressionType topic;
+        private final Endpoint endpoint;
+
+        public PublisherSubscription(TopicExpressionType topic) {
+            this.topic = topic;
+            this.id = idGenerator.generateSanitizedId();
+            this.endpoint = Endpoint.create(this);
+            this.endpoint.publish(address + "/subscriptions/" + this.id);
+        }
+
+        public W3CEndpointReference getEpr() {
+            return endpoint.getEndpointReference(W3CEndpointReference.class);
+        }
+
+        public UnsubscribeResponse unsubscribe(@WebParam(partName = "UnsubscribeRequest", name = "Unsubscribe", targetNamespace = "http://docs.oasis-open.org/wsn/b-2") Unsubscribe unsubscribeRequest) throws ResourceUnknownFault, UnableToDestroySubscriptionFault {
+            Publisher.this.unsubscribe(topic);
+            return new UnsubscribeResponse();
+        }
+
+        public RenewResponse renew(@WebParam(partName = "RenewRequest", name = "Renew", targetNamespace = "http://docs.oasis-open.org/wsn/b-2") Renew renewRequest) throws ResourceUnknownFault, UnacceptableTerminationTimeFault {
+            throw new UnsupportedOperationException();
+        }
     }
 
 }

@@ -17,11 +17,19 @@
 package org.apache.servicemix.wsn.jaxws;
 
 import javax.jws.WebService;
+import javax.xml.bind.JAXBElement;
 
+import org.apache.servicemix.wsn.AbstractSubscription;
 import org.apache.servicemix.wsn.jms.JmsPublisher;
 import org.apache.servicemix.wsn.util.WSNHelper;
+import org.oasis_open.docs.wsn.b_2.FilterType;
+import org.oasis_open.docs.wsn.b_2.Subscribe;
+import org.oasis_open.docs.wsn.b_2.SubscribeResponse;
+import org.oasis_open.docs.wsn.b_2.TopicExpressionType;
 import org.oasis_open.docs.wsn.b_2.Unsubscribe;
-import org.oasis_open.docs.wsn.bw_2.PausableSubscriptionManager;
+import org.oasis_open.docs.wsn.brw_2.PublisherRegistrationFailedFault;
+import org.oasis_open.docs.wsn.bw_2.NotificationProducer;
+import org.oasis_open.docs.wsn.bw_2.SubscriptionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,21 +38,45 @@ public class JaxwsPublisher extends JmsPublisher {
 
     private final Logger logger = LoggerFactory.getLogger(JaxwsPublisher.class);
 
-    public JaxwsPublisher(String name) {
+    protected JaxwsNotificationBroker notificationBroker;
+    private NotificationProducer notificationProducer;
+
+    public JaxwsPublisher(String name, JaxwsNotificationBroker notificationBroker) {
         super(name);
+        this.notificationBroker = notificationBroker;
     }
 
     @Override
-    protected Object startSubscription() {
-        return WSNHelper.getPort(publisherReference, PausableSubscriptionManager.class);
+    protected void start() throws PublisherRegistrationFailedFault {
+        super.start();
+        if (demand) {
+            notificationProducer = WSNHelper.getPort(publisherReference, NotificationProducer.class);
+        }
     }
 
     @Override
-    protected void destroySubscription(Object sub) {
+    protected Object startSubscription(TopicExpressionType topic) {
         try {
-            ((PausableSubscriptionManager) sub).unsubscribe(new Unsubscribe());
+            Subscribe subscribeRequest = new Subscribe();
+            subscribeRequest.setConsumerReference(notificationBroker.getEpr());
+            subscribeRequest.setFilter(new FilterType());
+            subscribeRequest.getFilter().getAny().add(
+                    new JAXBElement<TopicExpressionType>(AbstractSubscription.QNAME_TOPIC_EXPRESSION,
+                            TopicExpressionType.class, topic));
+            SubscribeResponse response = notificationProducer.subscribe(subscribeRequest);
+            return WSNHelper.getPort(response.getSubscriptionReference(), SubscriptionManager.class);
         } catch (Exception e) {
-            logger.info("Error while unsubscribing", e);
+            logger.info("Error while subscribing on-demand publisher", e);
+            return null;
+        }
+    }
+
+    @Override
+    protected void stopSubscription(Object sub) {
+        try {
+            ((SubscriptionManager) sub).unsubscribe(new Unsubscribe());
+        } catch (Exception e) {
+            logger.info("Error while unsubscribing on-demand publisher", e);
         }
     }
 

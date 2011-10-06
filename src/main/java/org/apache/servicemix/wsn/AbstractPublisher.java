@@ -53,6 +53,10 @@ public abstract class AbstractPublisher extends AbstractEndpoint implements Publ
         super(name);
     }
 
+    public W3CEndpointReference getPublisherReference() {
+        return publisherReference;
+    }
+
     /**
      * 
      * @param destroyRegistrationRequest
@@ -86,7 +90,7 @@ public abstract class AbstractPublisher extends AbstractEndpoint implements Publ
     }
 
     protected String createAddress() {
-        return "http://servicemix.org/wsnotification/Publisher/" + getName();
+        return "http://servicemix.org/wsnotification/publishers/" + getName();
     }
 
     public void create(RegisterPublisher registerPublisherRequest) throws InvalidTopicExpressionFault,

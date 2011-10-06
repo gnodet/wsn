@@ -16,6 +16,7 @@
  */
 package org.apache.servicemix.wsn.client;
 
+import java.util.Collections;
 import java.util.List;
 import javax.xml.bind.JAXBElement;
 import javax.xml.ws.wsaddressing.W3CEndpointReference;
@@ -74,8 +75,15 @@ public class NotificationBroker implements Referencable {
     }
 
     public void notify(String topic, Object msg) {
+        notify(null, topic, msg);
+    }
+
+    public void notify(Referencable publisher, String topic, Object msg) {
         Notify notify = new Notify();
         NotificationMessageHolderType holder = new NotificationMessageHolderType();
+        if (publisher != null) {
+            holder.setProducerReference(publisher.getEpr());
+        }
         if (topic != null) {
             TopicExpressionType topicExp = new TopicExpressionType();
             topicExp.getContent().add(topic);
@@ -135,19 +143,31 @@ public class NotificationBroker implements Referencable {
         return response.getAny();
     }
 
-    public Publisher registerPublisher(W3CEndpointReference publisherReference,
+    public Registration registerPublisher(Referencable publisher,
+                                          String topic) throws TopicNotSupportedFault, PublisherRegistrationFailedFault, UnacceptableInitialTerminationTimeFault, InvalidTopicExpressionFault, ResourceUnknownFault, PublisherRegistrationRejectedFault {
+        return registerPublisher(publisher, topic, false);
+    }
+
+    public Registration registerPublisher(Referencable publisher,
                                        String topic, boolean demand) throws TopicNotSupportedFault, PublisherRegistrationFailedFault, UnacceptableInitialTerminationTimeFault, InvalidTopicExpressionFault, ResourceUnknownFault, PublisherRegistrationRejectedFault {
+        return registerPublisher(publisher, Collections.singletonList(topic), demand);
+    }
+
+    public Registration registerPublisher(Referencable publisher,
+                                       List<String> topics, boolean demand) throws TopicNotSupportedFault, PublisherRegistrationFailedFault, UnacceptableInitialTerminationTimeFault, InvalidTopicExpressionFault, ResourceUnknownFault, PublisherRegistrationRejectedFault {
 
         RegisterPublisher registerPublisherRequest = new RegisterPublisher();
-        registerPublisherRequest.setPublisherReference(publisherReference);
-        if (topic != null) {
-            TopicExpressionType topicExp = new TopicExpressionType();
-            topicExp.getContent().add(topic);
-            registerPublisherRequest.getTopic().add(topicExp);
+        registerPublisherRequest.setPublisherReference(publisher.getEpr());
+        if (topics != null) {
+            for (String topic : topics) {
+                TopicExpressionType topicExp = new TopicExpressionType();
+                topicExp.getContent().add(topic);
+                registerPublisherRequest.getTopic().add(topicExp);
+            }
         }
         registerPublisherRequest.setDemand(demand);
         RegisterPublisherResponse response = broker.registerPublisher(registerPublisherRequest);
-        return new Publisher(response.getPublisherRegistrationReference());
+        return new Registration(response.getPublisherRegistrationReference());
     }
 
 }
