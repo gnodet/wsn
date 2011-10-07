@@ -72,7 +72,7 @@
                             <sourceRoot>${basedir}/target/jaxws</sourceRoot>
                             <wsdlOptions>
                                 <wsdlOption>
-                                    <wsdl>${basedir}/src/main/resources/org/apache/servicemix/wsn/wsn.wsdl</wsdl>
+                                    <wsdl>${basedir}/src/main/resources/org/apache/cxf/wsn/wsn.wsdl</wsdl>
                                     <extraargs>
                                         <extraarg>-verbose</extraarg>
                                     </extraargs>
