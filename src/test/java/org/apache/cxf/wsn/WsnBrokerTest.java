@@ -16,6 +16,12 @@
  */
 package org.apache.cxf.wsn;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.ServerSocket;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -39,7 +45,7 @@ import org.apache.cxf.wsn.util.WSNHelper;
 import org.oasis_open.docs.wsn.b_2.NotificationMessageHolderType;
 import org.oasis_open.docs.wsn.b_2.TopicExpressionType;
 
-public class WsnBrokerTest extends TestCase {
+public abstract class WsnBrokerTest extends TestCase {
 
     private ActiveMQConnectionFactory activemq;
     private JaxwsNotificationBroker notificationBrokerServer;
@@ -47,23 +53,37 @@ public class WsnBrokerTest extends TestCase {
     private NotificationBroker notificationBroker;
     private CreatePullPoint createPullPoint;
 
+    private int port1;
+    private int port2;
+
     @Override
     public void setUp() throws Exception {
+
+        port1 = getFreePort();
+        port2 = getFreePort();
+
         System.setProperty("java.util.logging.config.file", getClass().getClassLoader().getResource("logging.properties").getPath());
         java.util.logging.LogManager.getLogManager().readConfiguration();
 
         activemq = new ActiveMQConnectionFactory("vm:(broker:(tcp://localhost:6000)?persistent=false)");
 
         notificationBrokerServer = new JaxwsNotificationBroker("WSNotificationBroker", activemq);
-        notificationBrokerServer.setAddress("http://0.0.0.0:8181/wsn/NotificationBroker");
+        notificationBrokerServer.setAddress("http://0.0.0.0:" + port1 + "/wsn/NotificationBroker");
         notificationBrokerServer.init();
 
         createPullPointServer = new JaxwsCreatePullPoint("CreatePullPoint", activemq);
-        createPullPointServer.setAddress("http://0.0.0.0:8181/wsn/CreatePullPoint");
+        createPullPointServer.setAddress("http://0.0.0.0:" + port1 + "/wsn/CreatePullPoint");
         createPullPointServer.init();
 
-        notificationBroker = new NotificationBroker("http://0.0.0.0:8181/wsn/NotificationBroker");
-        createPullPoint = new CreatePullPoint("http://0.0.0.0:8181/wsn/CreatePullPoint");
+        notificationBroker = new NotificationBroker("http://0.0.0.0:" + port1 + "/wsn/NotificationBroker");
+        createPullPoint = new CreatePullPoint("http://0.0.0.0:" + port1 + "/wsn/CreatePullPoint");
+    }
+
+    private int getFreePort() throws IOException {
+        ServerSocket socket = new ServerSocket(0);
+        int port = socket.getLocalPort();
+        socket.close();
+        return port;
     }
 
     @Override
@@ -74,7 +94,7 @@ public class WsnBrokerTest extends TestCase {
 
     public void testBroker() throws Exception {
         TestConsumer callback = new TestConsumer();
-        Consumer consumer = new Consumer(callback, "http://0.0.0.0:8182/test/consumer");
+        Consumer consumer = new Consumer(callback, "http://0.0.0.0:" + port2 + "/test/consumer");
 
         Subscription subscription = notificationBroker.subscribe(consumer, "myTopic");
 
@@ -112,12 +132,12 @@ public class WsnBrokerTest extends TestCase {
 
     public void testPublisher() throws Exception {
         TestConsumer consumerCallback = new TestConsumer();
-        Consumer consumer = new Consumer(consumerCallback, "http://0.0.0.0:8182/test/consumer");
+        Consumer consumer = new Consumer(consumerCallback, "http://0.0.0.0:" + port2 + "/test/consumer");
 
         Subscription subscription = notificationBroker.subscribe(consumer, "myTopic");
 
         PublisherCallback publisherCallback = new PublisherCallback();
-        Publisher publisher = new Publisher(publisherCallback, "http://0.0.0.0:8182/test/publisher");
+        Publisher publisher = new Publisher(publisherCallback, "http://0.0.0.0:" + port2 + "/test/publisher");
         Registration registration = notificationBroker.registerPublisher(publisher, "myTopic");
 
         synchronized (consumerCallback.notifications) {
@@ -129,18 +149,18 @@ public class WsnBrokerTest extends TestCase {
         assertEquals(WSNHelper.getWSAAddress(subscription.getEpr()), WSNHelper.getWSAAddress(message.getSubscriptionReference()));
         assertEquals(WSNHelper.getWSAAddress(publisher.getEpr()), WSNHelper.getWSAAddress(message.getProducerReference()));
 
-        registration.destroy();
         subscription.unsubscribe();
+        registration.destroy();
         publisher.stop();
         consumer.stop();
     }
 
     public void testPublisherOnDemand() throws Exception {
         TestConsumer consumerCallback = new TestConsumer();
-        Consumer consumer = new Consumer(consumerCallback, "http://0.0.0.0:8182/test/consumer");
+        Consumer consumer = new Consumer(consumerCallback, "http://0.0.0.0:" + port2 + "/test/consumer");
 
         PublisherCallback publisherCallback = new PublisherCallback();
-        Publisher publisher = new Publisher(publisherCallback, "http://0.0.0.0:8182/test/publisher");
+        Publisher publisher = new Publisher(publisherCallback, "http://0.0.0.0:" + port2 + "/test/publisher");
         Registration registration = notificationBroker.registerPublisher(publisher, Arrays.asList("myTopic1", "myTopic2"), true);
 
         Subscription subscription = notificationBroker.subscribe(consumer, "myTopic1");
@@ -152,11 +172,12 @@ public class WsnBrokerTest extends TestCase {
         }
 
         subscription.unsubscribe();
+
+        assertTrue(publisherCallback.unsubscribed.await(5, TimeUnit.SECONDS));
+
         registration.destroy();
         publisher.stop();
         consumer.stop();
-
-        assertTrue(publisherCallback.unsubscribed.await(5, TimeUnit.SECONDS));
     }
 
     public static class TestConsumer implements Consumer.Callback {
@@ -181,6 +202,22 @@ public class WsnBrokerTest extends TestCase {
 
         public void unsubscribe(TopicExpressionType topic) {
             unsubscribed.countDown();
+        }
+    }
+
+    protected static class FakeClassLoader extends URLClassLoader {
+        private final String provider;
+        public FakeClassLoader(String provider) {
+            super(new URL[0], FakeClassLoader.class.getClassLoader());
+            this.provider = provider;
+        }
+        @Override
+        public InputStream getResourceAsStream(String name) {
+            if ("META-INF/services/javax.xml.ws.spi.Provider".equals(name)) {
+                return provider != null ? new ByteArrayInputStream(provider.getBytes()) : null;
+            } else {
+                return super.getResourceAsStream(name);
+            }
         }
     }
 
